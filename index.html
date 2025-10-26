@@ -695,25 +695,36 @@
         });
 
         // ---- NAPREDEK ----
-        function updateSuccessPercentage() {
-            const totalCards = flashcards.length;
-            const knownCards = Object.values(knowledgeTracker).filter(level => level === 'know').length;
-            const percentage = totalCards > 0 ? Math.round((knownCards / totalCards) * 100) : 0;
-            
-            const percentageElement = document.getElementById('successPercentage');
-            percentageElement.textContent = percentage + '%';
-            
-            if (percentage >= 80) {
-                percentageElement.style.color = '#4CAF50'; // Green
-                percentageElement.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.5)';
-            } else if (percentage >= 60) {
-                percentageElement.style.color = '#ff9800'; // Orange
-                percentageElement.style.textShadow = '0 0 10px rgba(255, 152, 0, 0.5)';
-            } else {
-                percentageElement.style.color = '#f44336'; // Red
-                percentageElement.style.textShadow = '0 0 10px rgba(244, 67, 54, 0.5)';
-            }
-        }
+      function updateSuccessPercentage() {
+    // Vse vrednosti, ki jih imamo shranjene za posamezne kartice
+    const levels = Object.values(knowledgeTracker);
+
+    // Koliko kartic je sploh bilo ocenjenih (kliknil sem karkoli: znam / delno / ne znam)
+    const ratedCount = levels.length;
+
+    // Koliko od ocenjenih je označenih kot "know"
+    const knownCount = levels.filter(level => level === 'know').length;
+
+    // Če še ni nobena kartica ocenjena, naj pokaže 0%
+    const percentage = ratedCount > 0
+        ? Math.round((knownCount / ratedCount) * 100)
+        : 0;
+
+    const percentageElement = document.getElementById('successPercentage');
+    percentageElement.textContent = percentage + '%';
+
+    // Barva glede na % (to lahko pustiš enako)
+    if (percentage >= 80) {
+        percentageElement.style.color = '#4CAF50'; // zeleno
+        percentageElement.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.5)';
+    } else if (percentage >= 60) {
+        percentageElement.style.color = '#ff9800'; // oranžno
+        percentageElement.style.textShadow = '0 0 10px rgba(255, 152, 0, 0.5)';
+    } else {
+        percentageElement.style.color = '#f44336'; // rdeče
+        percentageElement.style.textShadow = '0 0 10px rgba(244, 67, 54, 0.5)';
+    }
+}
 
         function markKnowledge(level) {
             if (filteredCards.length === 0) return;
