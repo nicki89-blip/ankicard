@@ -27,6 +27,7 @@
         .header {
             color: white;
             margin-bottom: 30px;
+            position: relative;
         }
 
         .header h1 {
@@ -37,8 +38,8 @@
 
         .success-indicator {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 0;
+            right: 0;
             background: rgba(255,255,255,0.15);
             padding: 10px 20px;
             border-radius: 25px;
@@ -80,7 +81,7 @@
 
         .card-container {
             perspective: 1000px;
-            margin-bottom: 80px;
+            margin-bottom: 40px;
         }
 
         .card {
@@ -150,11 +151,28 @@
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
 
+        .flip-hint {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            margin-top: 15px;
+            margin-bottom: 25px;
+            animation: pulse 2s infinite;
+        }
+
+        .knowledge-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
         .controls {
             display: flex;
             justify-content: center;
             gap: 15px;
             flex-wrap: wrap;
+            margin-bottom: 40px;
         }
 
         .filter-controls {
@@ -267,21 +285,6 @@
             box-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
         }
 
-        .knowledge-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .flip-hint {
-            color: rgba(255,255,255,0.8);
-            font-size: 0.9rem;
-            margin-top: 15px;
-            animation: pulse 2s infinite;
-        }
-
         .no-cards-message {
             color: rgba(255,255,255,0.8);
             font-size: 1.1rem;
@@ -374,7 +377,7 @@
             </div>
         </div>
 
-        <div class="flip-hint" id="flipHint">👆 Kliknite na kartico za obračanje</div>
+        <div class="flip-hint" id="flipHint">👆 Klikni kartico ali pritisni presledek za odgovor</div>
 
         <div class="knowledge-buttons">
             <button class="btn btn-success" onclick="markKnowledge('know')" title="Znam">
@@ -392,6 +395,9 @@
             <button class="btn" id="prevBtn" onclick="previousCard()" disabled>⬅️ Prejšnja</button>
             <button class="btn btn-primary" onclick="flipCard()">🔄 Obrni kartico</button>
             <button class="btn" id="nextBtn" onclick="nextCard()">Naslednja ➡️</button>
+
+            <button class="btn btn-secondary" onclick="shuffleCards()">🎲 Premešaj</button>
+            <button class="btn btn-secondary" onclick="resetProgress()">♻️ Začni znova</button>
         </div>
 
         <div class="filter-controls">
@@ -403,6 +409,7 @@
     </div>
 
     <script>
+        // ---- PODATKI: VPRAŠANJA IN ODGOVORI ----
         const flashcards = [
             {
                 question: "V ČEM SMO SI LJUDJE ENAKI?",
@@ -494,20 +501,27 @@
             }
         ];
 
+        // Shranimo izvirni vrstni red, da ga lahko povrnemo
+        let originalOrder = [...flashcards];
+
+        // ---- STANJE ----
         let currentCard = 0;
         let isFlipped = false;
         let knowledgeTracker = {};
         let currentFilter = 'all';
         let filteredCards = [];
 
+        // ---- FUNKCIJE ZA PRIKAZ ----
         function getFilteredCards() {
             switch(currentFilter) {
                 case 'partial':
-                    return flashcards.map((card, index) => ({ card, originalIndex: index }))
-                                   .filter(item => knowledgeTracker[item.originalIndex] === 'partial');
+                    return flashcards
+                        .map((card, index) => ({ card, originalIndex: index }))
+                        .filter(item => knowledgeTracker[item.originalIndex] === 'partial');
                 case 'dont-know':
-                    return flashcards.map((card, index) => ({ card, originalIndex: index }))
-                                   .filter(item => knowledgeTracker[item.originalIndex] === 'dont-know');
+                    return flashcards
+                        .map((card, index) => ({ card, originalIndex: index }))
+                        .filter(item => knowledgeTracker[item.originalIndex] === 'dont-know');
                 default:
                     return flashcards.map((card, index) => ({ card, originalIndex: index }));
             }
@@ -537,7 +551,7 @@
             document.getElementById('flashcard').classList.remove('flipped');
             isFlipped = false;
             
-            // Update progress
+            // Update progress bar / text
             const progress = ((currentCard + 1) / filteredCards.length) * 100;
             document.getElementById('progressBar').style.width = progress + '%';
             document.getElementById('progressText').textContent = `Kartica ${currentCard + 1} od ${filteredCards.length}`;
@@ -546,7 +560,7 @@
             document.getElementById('prevBtn').disabled = currentCard === 0;
             document.getElementById('nextBtn').disabled = currentCard === filteredCards.length - 1;
             
-            // Show flip hint
+            // Show flip hint again na začetku
             document.getElementById('flipHint').style.display = 'block';
         }
 
@@ -561,16 +575,16 @@
                 case 'dont-know':
                     message = '🚫 Še niste označili nobene kartice kot "Ne znam".<br>Označite nekaj kartic in se vrnite!';
                     break;
+                default:
+                    message = 'Ni kartic za prikaz.';
             }
             
             container.innerHTML = `<div class="no-cards-message">${message}</div>`;
             document.getElementById('flipHint').style.display = 'none';
             
-            // Hide navigation buttons
+            // Disable navigation, clear progress
             document.getElementById('prevBtn').disabled = true;
             document.getElementById('nextBtn').disabled = true;
-            
-            // Update progress
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressText').textContent = 'Ni kartic za prikaz';
         }
@@ -595,13 +609,14 @@
             `;
         }
 
+        // ---- NAVIGACIJA KARTIC ----
         function flipCard() {
             const card = document.getElementById('flashcard');
             if (card) {
                 card.classList.toggle('flipped');
                 isFlipped = !isFlipped;
                 
-                // Hide flip hint after first flip
+                // skrij namig po prvem flipu
                 if (isFlipped) {
                     document.getElementById('flipHint').style.display = 'none';
                 }
@@ -622,6 +637,7 @@
             }
         }
 
+        // ---- FILTER FUNKCIJE ----
         function showAllCards() {
             currentFilter = 'all';
             currentCard = 0;
@@ -644,12 +660,10 @@
         }
 
         function updateFilterButtons() {
-            // Remove active class from all filter buttons
             document.getElementById('allBtn').classList.remove('active');
             document.getElementById('partialBtn').classList.remove('active');
             document.getElementById('unknownBtn').classList.remove('active');
             
-            // Add active class to current filter button
             switch(currentFilter) {
                 case 'all':
                     document.getElementById('allBtn').classList.add('active');
@@ -663,7 +677,7 @@
             }
         }
 
-        // Keyboard navigation
+        // ---- TIPKOVNICA ----
         document.addEventListener('keydown', function(event) {
             switch(event.key) {
                 case 'ArrowLeft':
@@ -680,15 +694,15 @@
             }
         });
 
+        // ---- NAPREDEK ----
         function updateSuccessPercentage() {
             const totalCards = flashcards.length;
             const knownCards = Object.values(knowledgeTracker).filter(level => level === 'know').length;
             const percentage = totalCards > 0 ? Math.round((knownCards / totalCards) * 100) : 0;
             
-            document.getElementById('successPercentage').textContent = percentage + '%';
-            
-            // Update color based on percentage
             const percentageElement = document.getElementById('successPercentage');
+            percentageElement.textContent = percentage + '%';
+            
             if (percentage >= 80) {
                 percentageElement.style.color = '#4CAF50'; // Green
                 percentageElement.style.textShadow = '0 0 10px rgba(76, 175, 80, 0.5)';
@@ -707,10 +721,9 @@
             const originalIndex = filteredCards[currentCard].originalIndex;
             knowledgeTracker[originalIndex] = level;
             
-            // Update success percentage
             updateSuccessPercentage();
             
-            // Visual feedback
+            // vizualen feedback
             const buttons = document.querySelectorAll('.knowledge-buttons .btn');
             buttons.forEach(btn => btn.style.opacity = '0.6');
             
@@ -723,12 +736,11 @@
                 buttons.forEach(btn => btn.style.opacity = '1');
             }, 300);
             
-            // Auto advance to next card after marking
+            // auto naprej po 0.8s
             setTimeout(() => {
                 if (currentCard < filteredCards.length - 1) {
                     nextCard();
                 } else {
-                    // If we're at the last card and filtering, refresh the view
                     if (currentFilter !== 'all') {
                         updateCard();
                     }
@@ -736,8 +748,49 @@
             }, 800);
         }
 
-        // Initialize
+        // ---- NOVO: PREMEŠAJ IN RESET ----
+        function shuffleCards() {
+            // Fisher-Yates shuffle
+            for (let i = flashcards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [flashcards[i], flashcards[j]] = [flashcards[j], flashcards[i]];
+            }
+
+            // reset stanja po premešanju
+            currentFilter = 'all';
+            updateFilterButtons();
+
+            currentCard = 0;
+            isFlipped = false;
+
+            knowledgeTracker = {};
+            updateSuccessPercentage();
+
+            updateCard();
+        }
+
+        function resetProgress() {
+            // vrni prvotni vrstni red kartic
+            flashcards.length = 0;
+            originalOrder.forEach(card => flashcards.push(card));
+
+            // počisti znanje
+            knowledgeTracker = {};
+
+            // ponastavi stanje
+            currentFilter = 'all';
+            updateFilterButtons();
+
+            currentCard = 0;
+            isFlipped = false;
+
+            updateSuccessPercentage();
+            updateCard();
+        }
+
+        // ---- ZAŽENI PRVIČ ----
         updateCard();
+        updateSuccessPercentage();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'994a52408160f974',t:'MTc2MTQ4NTU2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
